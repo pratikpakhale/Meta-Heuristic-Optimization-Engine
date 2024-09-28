@@ -1,0 +1,11 @@
+{
+  "num_families": 50,
+  "num_parents": 2,
+  "num_children": 3,
+  "alpha": 0.9,
+  "beta": 0.1,
+  "gamma": 0.9,
+  "max_iter": 250,
+  "decay_factor": 0.95,
+  "increment": 0.05
+}
