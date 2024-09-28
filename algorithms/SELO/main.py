@@ -3,7 +3,9 @@
 import numpy as np
 import random
 
-def socio_evolution_learning_optimization(objective_function, dimension, lower_bound, upper_bound, **kwargs):
+def socio_evolution_learning_optimization(objective_function, dimension, lower_bound, upper_bound, callback=None,
+    global_optimum=None,
+    **kwargs):
     """
     Socio Evolution & Learning Optimization Algorithm (SELO)
 
@@ -192,6 +194,15 @@ def socio_evolution_learning_optimization(objective_function, dimension, lower_b
         
         alpha = max(alpha, 0)
         beta = min(beta, 1 - alpha)
+
+        all_individuals = []
+        for family in families:
+            all_individuals.extend(family['parents'] + family['children'])
+        best_individual = min(all_individuals, key=lambda x: x['fitness'])
+        if callback and global_optimum:
+            closeness_to_optimum = abs(best_individual['fitness'] - global_optimum)
+            callback(best_individual['fitness'], closeness_to_optimum)
+
 
     
     all_individuals = []

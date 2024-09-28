@@ -1,7 +1,8 @@
 
 import numpy as np
 
-def particle_swarm_optimization(func, dim, lower_bound, upper_bound, num_particles, max_iter, w, c1, c2):
+def particle_swarm_optimization(func, dim, lower_bound, upper_bound, num_particles, max_iter, w, c1, c2, callback=None,
+    global_optimum=None, **kwargs):
     
     particles = np.random.uniform(lower_bound, upper_bound, (num_particles, dim))
     velocities = np.zeros((num_particles, dim))
@@ -32,6 +33,9 @@ def particle_swarm_optimization(func, dim, lower_bound, upper_bound, num_particl
         if np.min(fitness) < global_best_fitness:
             global_best = particles[np.argmin(fitness)]
             global_best_fitness = np.min(fitness)
+        if callback and global_optimum:
+            closeness_to_optimum = abs(global_best_fitness - global_optimum)
+            callback(global_best_fitness, closeness_to_optimum)
 
     return {
         "best_solution": global_best,

@@ -5,7 +5,7 @@
   "alpha": 0.9,
   "beta": 0.1,
   "gamma": 0.9,
-  "max_iter": 500,
+  "max_iter": 1000,
   "decay_factor": 0.95,
   "increment": 0.05,
   "random_seed": 15

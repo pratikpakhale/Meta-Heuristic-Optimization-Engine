@@ -4,10 +4,10 @@ from algorithms import socio_evolution_learning_optimization, nomadic_people_opt
 
 if __name__ == "__main__":
     algorithms = {
-        # "SELO": socio_evolution_learning_optimization,
-        # "NPO": nomadic_people_optimizer,
+        "SELO": socio_evolution_learning_optimization,
+        "NPO": nomadic_people_optimizer,
         "SNLO": socio_nomadic_learning_optimizer,
-        # "PSO": particle_swarm_optimization
+        "PSO": particle_swarm_optimization
     }
 
     for algo_name, algo_func in algorithms.items():

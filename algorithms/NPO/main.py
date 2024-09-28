@@ -11,7 +11,8 @@ def nomadic_people_optimizer(
     max_iterations=100,
     num_clans=5,
     families_per_clan=10,
-    **kwargs
+    callback=None,
+    global_optimum=None, **kwargs
 ):
     """
     Nomadic People Optimizer (NPO) Algorithm Implementation.
@@ -193,7 +194,10 @@ def nomadic_people_optimizer(
                         best_leader_fitness = f_r_new
                         best_leader_position = r_new.copy()
                         best_leader_index = c
-
+        
+        if callback and global_optimum:
+            closeness_to_optimum = abs(best_leader_fitness - global_optimum)
+            callback(iteration, closeness_to_optimum)
     result = {
         'best_solution': best_leader_position,
         'best_fitness': best_leader_fitness

@@ -28,15 +28,19 @@ class OptimizationEngine:
 
 
     def plot_convergence(self):
-        plt.figure(figsize=(10, 6))
-        plt.plot(self.iteration_history[self.current_benchmark], self.fitness_history[self.current_benchmark], 'b-', marker='o')
-        plt.title(f"Convergence Plot - {self.algorithm_name} - {self.current_benchmark}")
-        plt.xlabel("Iteration")
-        plt.ylabel("Best Fitness")
-        plt.yscale('log')
-        plt.grid(True)
-        plt.savefig(os.path.join(self.plots_dir, f"convergence_{self.algorithm_name}_{self.current_benchmark}.png"))
-        plt.close()
+        if self.iteration_history[self.current_benchmark] and self.fitness_history[self.current_benchmark]:
+            plt.figure(figsize=(10, 6))
+            plt.plot(self.iteration_history[self.current_benchmark], self.fitness_history[self.current_benchmark], 'b-', marker='o')
+            plt.title(f"Convergence Plot - {self.algorithm_name} - {self.current_benchmark}")
+            plt.xlabel("Iteration")
+            plt.ylabel("Best Fitness")
+            plt.yscale('log')  # Use log scale for y-axis
+            plt.grid(True)
+            plt.savefig(os.path.join(self.plots_dir, f"convergence_{self.algorithm_name}_{self.current_benchmark}.png"))
+            plt.close()
+        else:
+            print(f"No data to plot for {self.current_benchmark}")
+
 
     def callback(self, iteration, best_fitness):
         if iteration % self.plot_interval == 0:
@@ -104,6 +108,10 @@ class OptimizationEngine:
 
         for func_name, func_details in self.benchmark_functions.items():
             self.current_benchmark = func_name
+        
+            self.iteration_history[self.current_benchmark] = []
+            self.fitness_history[self.current_benchmark] = []
+
             self.logger.info(f"\n--- Starting optimization for {func_name} ---")
             self.logger.info(f"Dimension: {func_details['DIMENSION']}")
             self.logger.info(f"Bounds: [{func_details['LOWER_BOUND']}, {func_details['UPPER_BOUND']}]")
