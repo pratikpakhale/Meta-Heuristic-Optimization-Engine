@@ -5,15 +5,48 @@ from typing import Callable, Dict, Any
 from datetime import datetime
 import os
 import csv
+import matplotlib.pyplot as plt
+
 
 class OptimizationEngine:
-    def __init__(self, benchmark_functions: Dict[str, Dict[str, Any]], algorithm: Callable, algorithm_name: str):
+    def __init__(self, benchmark_functions: Dict[str, Dict[str, Any]], algorithm: Callable, algorithm_name: str, plot_interval=10):
         self.benchmark_functions = benchmark_functions
         self.algorithm = algorithm
         self.algorithm_name = algorithm_name
         hyperparameters_file = f"algorithms/{algorithm_name}/hyperparameters.json"
         self.hyperparameters = self.load_hyperparameters(hyperparameters_file)
         self.setup_logging()
+        
+        self.plot_interval = plot_interval
+        self.iteration_history = {func_name: [] for func_name in benchmark_functions}
+        self.fitness_history = {func_name: [] for func_name in benchmark_functions}
+        self.current_benchmark = None
+        
+        # Create plots directory if it doesn't exist
+        self.plots_dir = "plots"
+        os.makedirs(self.plots_dir, exist_ok=True)
+
+
+    def plot_convergence(self):
+        plt.figure(figsize=(10, 6))
+        plt.plot(self.iteration_history[self.current_benchmark], self.fitness_history[self.current_benchmark], 'b-', marker='o')
+        plt.title(f"Convergence Plot - {self.algorithm_name} - {self.current_benchmark}")
+        plt.xlabel("Iteration")
+        plt.ylabel("Best Fitness")
+        plt.yscale('log')
+        plt.grid(True)
+        plt.savefig(os.path.join(self.plots_dir, f"convergence_{self.algorithm_name}_{self.current_benchmark}.png"))
+        plt.close()
+
+    def callback(self, iteration, best_fitness):
+        if iteration % self.plot_interval == 0:
+            if self.current_benchmark not in self.iteration_history:
+                self.iteration_history[self.current_benchmark] = []
+                self.fitness_history[self.current_benchmark] = []
+            self.iteration_history[self.current_benchmark].append(iteration)
+            self.fitness_history[self.current_benchmark].append(best_fitness)
+
+
 
     def load_hyperparameters(self, file_path: str) -> Dict[str, Any]:
         with open(file_path, 'r') as f:
@@ -70,6 +103,7 @@ class OptimizationEngine:
         self.logger.info("=" * 40)
 
         for func_name, func_details in self.benchmark_functions.items():
+            self.current_benchmark = func_name
             self.logger.info(f"\n--- Starting optimization for {func_name} ---")
             self.logger.info(f"Dimension: {func_details['DIMENSION']}")
             self.logger.info(f"Bounds: [{func_details['LOWER_BOUND']}, {func_details['UPPER_BOUND']}]")
@@ -87,6 +121,8 @@ class OptimizationEngine:
                 func_details['DIMENSION'],
                 func_details['LOWER_BOUND'],
                 func_details['UPPER_BOUND'],
+                callback=self.callback,
+                global_optimum=func_details['GLOBAL_OPTIMUM'],
                 **self.hyperparameters
             )
             end_time = datetime.now()
@@ -119,6 +155,8 @@ class OptimizationEngine:
                 random_seed
             ])
             self.csv_file.flush()  
+            self.plot_convergence()
+
 
         self.logger.info("\n=== Optimization Engine Finished ===")
         self.csv_file.close()
