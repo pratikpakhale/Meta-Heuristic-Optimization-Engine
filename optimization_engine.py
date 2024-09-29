@@ -1,179 +1,208 @@
 import numpy as np
 import json
 import logging
-from typing import Callable, Dict, Any
+from typing import Callable, Dict, Any, List
 from datetime import datetime
 import os
 import csv
 import matplotlib.pyplot as plt
 
-
 class OptimizationEngine:
-    def __init__(self, benchmark_functions: Dict[str, Dict[str, Any]], algorithm: Callable, algorithm_name: str, plot_interval=5):
+    def __init__(self, benchmark_functions: Dict[str, Dict[str, Any]], algorithms: Dict[str, Callable], plot_interval=1):
         self.benchmark_functions = benchmark_functions
-        self.algorithm = algorithm
-        self.algorithm_name = algorithm_name
-        hyperparameters_file = f"algorithms/{algorithm_name}/hyperparameters.json"
-        self.hyperparameters = self.load_hyperparameters(hyperparameters_file)
-        self.setup_logging()
-        
+        self.algorithms = algorithms
         self.plot_interval = plot_interval
-        self.iteration_history = {func_name: [] for func_name in benchmark_functions}
-        self.fitness_history = {func_name: [] for func_name in benchmark_functions}
-        self.current_benchmark = None
-        
-        # Create plots directory if it doesn't exist
+        self.setup_directories()
+        self.setup_logging()
+        self.load_hyperparameters()
+        self.setup_data_structures()
+
+    def setup_directories(self):
         self.plots_dir = "plots"
-        os.makedirs(self.plots_dir, exist_ok=True)
-
-
-    def plot_convergence(self):
-        if self.iteration_history[self.current_benchmark] and self.fitness_history[self.current_benchmark]:
-            plt.figure(figsize=(10, 6))
-            plt.plot(self.iteration_history[self.current_benchmark], self.fitness_history[self.current_benchmark], 'b-', marker='o')
-            plt.title(f"Convergence Plot - {self.algorithm_name} - {self.current_benchmark}")
-            plt.xlabel("Iteration")
-            plt.ylabel("Best Fitness")
-
-            # Check if all fitness values are positive
-            if all(f > 0 for f in self.fitness_history[self.current_benchmark]):
-                plt.yscale('log')  # Use log scale for positive values only
-                # plt.grid(True, which="both", ls="--")
-            else:
-                # Adjust y-axis limits for better visualization of negative values
-                min_fitness = min(self.fitness_history[self.current_benchmark])
-                max_fitness = max(self.fitness_history[self.current_benchmark])
-                plt.ylim(min_fitness - 0.1 * abs(min_fitness), max_fitness + 0.1 * abs(max_fitness))
-                plt.grid(True)
-
-            plt.savefig(os.path.join(self.plots_dir, f"{self.algorithm_name}_{self.current_benchmark}.png"))
-            plt.close()
-        else:
-            print(f"No data to plot for {self.current_benchmark}")
-
-    def callback(self, iteration, best_fitness):
-        if iteration % self.plot_interval == 0:
-            if self.current_benchmark not in self.iteration_history:
-                self.iteration_history[self.current_benchmark] = []
-                self.fitness_history[self.current_benchmark] = []
-            self.iteration_history[self.current_benchmark].append(iteration)
-            self.fitness_history[self.current_benchmark].append(best_fitness)
-
-
-
-    def load_hyperparameters(self, file_path: str) -> Dict[str, Any]:
-        with open(file_path, 'r') as f:
-            return json.load(f)
+        self.logs_dir = "logs"
+        self.csv_dir = "csv_results"
+        for directory in [self.plots_dir, self.logs_dir, self.csv_dir]:
+            os.makedirs(directory, exist_ok=True)
 
     def setup_logging(self):
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_dir = "logs"
-        os.makedirs(log_dir, exist_ok=True)
-
-        self.log_filename = os.path.join(log_dir, f"optimization_results_{self.timestamp}.log")
+        self.log_filename = os.path.join(self.logs_dir, f"optimization_results_{self.timestamp}.log")
         
-        # Create a logger
-        self.logger = logging.getLogger(self.algorithm_name)
+        self.logger = logging.getLogger("OptimizationEngine")
         self.logger.setLevel(logging.INFO)
 
-        # Remove all handlers associated with the logger object
-        for handler in self.logger.handlers[:]:
-            self.logger.removeHandler(handler)
-
-        # Create file handler
         file_handler = logging.FileHandler(self.log_filename)
-        file_handler.setLevel(logging.INFO)
-
-        # Create console handler
         console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.INFO)
-
-        # Create formatter and add it to the handlers
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        file_handler.setFormatter(formatter)
-        console_handler.setFormatter(formatter)
-
-        # Add the handlers to the logger
-        self.logger.addHandler(file_handler)
-        self.logger.addHandler(console_handler)
-
-        # CSV setup
-        self.csv_filename = os.path.join(log_dir, "results.csv")
-        file_exists = os.path.isfile(self.csv_filename)
         
-        self.csv_file = open(self.csv_filename, 'a', newline='')
-        self.csv_writer = csv.writer(self.csv_file)
+        for handler in [file_handler, console_handler]:
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+
+    def load_hyperparameters(self):
+        self.hyperparameters = {}
+        for algo_name in self.algorithms.keys():
+            file_path = f"algorithms/{algo_name}/hyperparameters.json"
+            with open(file_path, 'r') as f:
+                self.hyperparameters[algo_name] = json.load(f)
+
+    def setup_data_structures(self):
+        self.iteration_history = {algo: {func: [] for func in self.benchmark_functions} for algo in self.algorithms}
+        self.fitness_history = {algo: {func: [] for func in self.benchmark_functions} for algo in self.algorithms}
+
+    def callback(self, algo_name, func_name, iteration, best_fitness):
         
-        if not file_exists:
-            self.csv_writer.writerow(['Timestamp', 'Log File', 'Algorithm', 'Function', 'Dimension', 
-                                      'Lower Bound', 'Upper Bound', 'Global Optimum', 'Best Fitness', 
-                                      'Closeness to Global Optimum', 'Execution Time (s)', 'Best Solution', 'Random Seed'])
+
+        if iteration % self.plot_interval == 0:
+            
+            self.iteration_history[algo_name][func_name].append(iteration)
+            self.fitness_history[algo_name][func_name].append(best_fitness)
+
+
+    def plot_convergence(self, algo_name, func_name):
+        plt.figure(figsize=(10, 6))
+        plt.plot(self.iteration_history[algo_name][func_name], self.fitness_history[algo_name][func_name], 'b-', marker='o')
+        plt.title(f"Convergence Plot - {algo_name} - {func_name}")
+        plt.xlabel("Iteration")
+        plt.ylabel("Best Fitness")
+
+        if all(f > 0 for f in self.fitness_history[algo_name][func_name]):
+            plt.yscale('log')
+        else:
+            min_fitness = min(self.fitness_history[algo_name][func_name])
+            max_fitness = max(self.fitness_history[algo_name][func_name])
+            plt.ylim(min_fitness - 0.1 * abs(min_fitness), max_fitness + 0.1 * abs(max_fitness))
+
+        plt.grid(True)
+        plt.savefig(os.path.join(self.plots_dir, f"{algo_name}_{func_name}.png"))
+        plt.close()
+
+
+    def plot_comparative_results(self):
+        for func_name in self.benchmark_functions:
+            plt.figure(figsize=(12, 8))
+            all_positive = True
+            min_fitness = float('inf')
+            max_fitness = float('-inf')
+            has_data = False
+
+            for algo_name in self.algorithms:
+                if func_name in self.fitness_history[algo_name] and self.fitness_history[algo_name][func_name]:
+                    fitness_values = self.fitness_history[algo_name][func_name]
+                    plt.plot(self.iteration_history[algo_name][func_name], fitness_values, label=algo_name)
+                    
+                    if any(f <= 0 for f in fitness_values):
+                        all_positive = False
+                    min_fitness = min(min_fitness, min(fitness_values))
+                    max_fitness = max(max_fitness, max(fitness_values))
+                    has_data = True
+
+            if not has_data:
+                self.logger.warning(f"No data available for function: {func_name}")
+                plt.close()
+                continue
+
+            plt.title(f"Comparative Convergence Plot - {func_name}")
+            plt.xlabel("Iteration")
+            plt.ylabel("Best Fitness")
+            plt.legend()
+            plt.grid(True)
+
+            if all_positive:
+                plt.yscale('log')
+            else:
+                plt.ylim(min_fitness - 0.1 * abs(min_fitness), max_fitness + 0.1 * abs(max_fitness))
+
+            plt.savefig(os.path.join(self.plots_dir, f"comparative_{func_name}.png"))
+            plt.close()
+
+   
+    def run_single_optimization(self, algo_name, func_name, func_details):
+        self.logger.info(f"\n--- Starting optimization for {algo_name} on {func_name} ---")
+        self.logger.info(f"Dimension: {func_details['DIMENSION']}")
+        self.logger.info(f"Bounds: [{func_details['LOWER_BOUND']}, {func_details['UPPER_BOUND']}]")
+        self.logger.info(f"Global Optimum: {func_details['GLOBAL_OPTIMUM']}")
+
+        random_seed = self.hyperparameters[algo_name].get('random_seed', None)
+        if random_seed is not None:
+            np.random.seed(random_seed)
+            self.logger.info(f"Random seed set to: {random_seed}")
+
+        start_time = datetime.now()
+        result = self.algorithms[algo_name](
+            func_details['function'],
+            func_details['DIMENSION'],
+            func_details['LOWER_BOUND'],
+            func_details['UPPER_BOUND'],
+            callback=lambda iteration, best_fitness: self.callback(algo_name, func_name, iteration, best_fitness),
+            global_optimum=func_details['GLOBAL_OPTIMUM'],
+            **self.hyperparameters[algo_name]
+        )
+        end_time = datetime.now()
+        execution_time = (end_time - start_time).total_seconds()
+
+        best_fitness = result['best_fitness']
+        closeness_to_optimum = abs(best_fitness - func_details['GLOBAL_OPTIMUM'])
+        best_solution = np.array2string(result['best_solution'], precision=4, suppress_small=True)
+
+        self.logger.info("\nOptimization completed")
+        self.logger.info(f"Execution time: {execution_time:.2f} seconds")
+        self.logger.info(f"Best fitness: {best_fitness:.6f}")
+        self.logger.info(f"Closeness from global optimum: {closeness_to_optimum:.6e}")
+        self.logger.info(f"Best solution: {best_solution}")
+        self.logger.info("-" * 40)
+
+        return {
+            'Algorithm': algo_name,
+            'Function': func_name,
+            'Dimension': func_details['DIMENSION'],
+            'Lower Bound': func_details['LOWER_BOUND'],
+            'Upper Bound': func_details['UPPER_BOUND'],
+            'Global Optimum': func_details['GLOBAL_OPTIMUM'],
+            'Best Fitness': best_fitness,
+            'Closeness to Global Optimum': closeness_to_optimum,
+            'Execution Time (s)': execution_time,
+            'Best Solution': best_solution,
+            'Random Seed': random_seed
+        }
 
     def run_optimization(self):
         self.logger.info("=== Optimization Engine Started ===")
-        self.logger.info(f"Algorithm: {self.algorithm_name}")
-        self.logger.info(f"Hyperparameters: {json.dumps(self.hyperparameters, indent=2)}")
-        self.logger.info("=" * 40)
+        for algo_name, algo_func in self.algorithms.items():
+            self.logger.info(f"Algorithm: {algo_name}")
+            self.logger.info(f"Hyperparameters: {json.dumps(self.hyperparameters[algo_name], indent=2)}")
+            self.logger.info("=" * 40)
 
-        for func_name, func_details in self.benchmark_functions.items():
-            self.current_benchmark = func_name
-        
-            self.iteration_history[self.current_benchmark] = []
-            self.fitness_history[self.current_benchmark] = []
+        results = []
+        for algo_name in self.algorithms:
+            for func_name, func_details in self.benchmark_functions.items():
+                result = self.run_single_optimization(algo_name, func_name, func_details)
+                results.append(result)
 
-            self.logger.info(f"\n--- Starting optimization for {func_name} ---")
-            self.logger.info(f"Dimension: {func_details['DIMENSION']}")
-            self.logger.info(f"Bounds: [{func_details['LOWER_BOUND']}, {func_details['UPPER_BOUND']}]")
-            self.logger.info(f"Global Optimum: {func_details['GLOBAL_OPTIMUM']}")
-
-            # Set the random seed
-            random_seed = self.hyperparameters.get('random_seed', None)
-            if random_seed is not None:
-                np.random.seed(random_seed)
-                self.logger.info(f"Random seed set to: {random_seed}")
-
-            start_time = datetime.now()
-            result = self.algorithm(
-                func_details['function'],
-                func_details['DIMENSION'],
-                func_details['LOWER_BOUND'],
-                func_details['UPPER_BOUND'],
-                callback=self.callback,
-                global_optimum=func_details['GLOBAL_OPTIMUM'],
-                **self.hyperparameters
-            )
-            end_time = datetime.now()
-            execution_time = (end_time - start_time).total_seconds()
-
-            best_fitness = result['best_fitness']
-            closeness_to_optimum = abs(best_fitness - func_details['GLOBAL_OPTIMUM'])
-            best_solution = np.array2string(result['best_solution'], precision=4, suppress_small=True)
-
-            self.logger.info("\nOptimization completed")
-            self.logger.info(f"Execution time: {execution_time:.2f} seconds")
-            self.logger.info(f"Best fitness: {best_fitness:.6f}")
-            self.logger.info(f"Closeness from global optimum: {closeness_to_optimum:.6e}")
-            self.logger.info(f"Best solution: {best_solution}")
-            self.logger.info("-" * 40)
-
-            self.csv_writer.writerow([
-                self.timestamp,
-                os.path.basename(self.log_filename),
-                self.algorithm_name,
-                func_name,
-                func_details['DIMENSION'],
-                func_details['LOWER_BOUND'],
-                func_details['UPPER_BOUND'],
-                func_details['GLOBAL_OPTIMUM'],
-                best_fitness,
-                closeness_to_optimum,
-                execution_time,
-                best_solution,
-                random_seed
-            ])
-            self.csv_file.flush()  
-            self.plot_convergence()
-
-
+        self.save_results_to_csv(results)
+        self.plot_all_convergences()
+        self.plot_comparative_results()
         self.logger.info("\n=== Optimization Engine Finished ===")
-        self.csv_file.close()
+
+    
+    def save_results_to_csv(self, results: List[Dict[str, Any]]):
+        csv_filename = os.path.join(self.csv_dir, f"results_{self.timestamp}.csv")
+        fieldnames = ['Timestamp', 'Log File', 'Algorithm', 'Function', 'Dimension', 
+                      'Lower Bound', 'Upper Bound', 'Global Optimum', 'Best Fitness', 
+                      'Closeness to Global Optimum', 'Execution Time (s)', 'Best Solution', 'Random Seed']
+        
+        with open(csv_filename, 'w', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for result in results:
+                row = {
+                    'Timestamp': self.timestamp,
+                    'Log File': os.path.basename(self.log_filename),
+                    **result
+                }
+                writer.writerow(row)
+
+    def plot_all_convergences(self):
+        for algo_name in self.algorithms:
+            for func_name in self.benchmark_functions:
+                self.plot_convergence(algo_name, func_name)

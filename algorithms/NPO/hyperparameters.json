@@ -1,6 +1,5 @@
 {
-  "max_iterations": 500,
+  "max_iterations": 100,
   "num_clans": 50,
-  "families_per_clan": 30,
-  "random_seed": 25
+  "families_per_clan": 30
 }
