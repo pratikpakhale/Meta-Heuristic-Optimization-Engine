@@ -341,15 +341,15 @@ def socio_nomadic_learning_optimizer(
                         if f_r_new < best_fitness:
                             best_fitness = f_r_new
                             best_solution = r_new.copy()
+                        if callback:
+                            callback(iteration, f_r_new)
 
         # Adjust learning parameters
         alpha *= decay_factor
         beta = min(beta + increment, 1 - alpha)
         alpha = max(alpha, 0.0)
         beta = min(beta, 1.0 - alpha)
-        if callback and global_optimum:
-            closeness_to_optimum = abs(best_fitness - global_optimum)
-            callback(iteration, closeness_to_optimum)
+        
         
 
 

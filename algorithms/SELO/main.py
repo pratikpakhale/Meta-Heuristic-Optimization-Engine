@@ -70,7 +70,7 @@ def socio_evolution_learning_optimization(objective_function, dimension, lower_b
         families.append(family)
 
     
-    for _ in range(max_iter):
+    for iteration in range(max_iter):
         
         all_parents = [parent for family in families for parent in family['parents']]
         for f_index, family in enumerate(families):
@@ -195,13 +195,17 @@ def socio_evolution_learning_optimization(objective_function, dimension, lower_b
         alpha = max(alpha, 0)
         beta = min(beta, 1 - alpha)
 
-        all_individuals = []
-        for family in families:
-            all_individuals.extend(family['parents'] + family['children'])
-        best_individual = min(all_individuals, key=lambda x: x['fitness'])
-        if callback and global_optimum:
-            closeness_to_optimum = abs(best_individual['fitness'] - global_optimum)
-            callback(best_individual['fitness'], closeness_to_optimum)
+        if callback is not None:
+            # Collect all individuals (parents and children)
+            all_individuals = []
+            for family in families:
+                all_individuals.extend(family['parents'] + family['children'])
+            # Find the best fitness among all individuals
+            best_individual = min(all_individuals, key=lambda x: x['fitness'])
+            curr_fitness = best_individual['fitness']
+            # Call the callback with the iteration number and current best fitness
+            callback(iteration, curr_fitness)
+
 
 
     

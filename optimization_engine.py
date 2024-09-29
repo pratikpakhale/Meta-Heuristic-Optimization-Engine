@@ -34,13 +34,11 @@ class OptimizationEngine:
             plt.title(f"Convergence Plot - {self.algorithm_name} - {self.current_benchmark}")
             plt.xlabel("Iteration")
             plt.ylabel("Best Fitness")
-            plt.yscale('log')  # Use log scale for y-axis
             plt.grid(True)
-            plt.savefig(os.path.join(self.plots_dir, f"convergence_{self.algorithm_name}_{self.current_benchmark}.png"))
+            plt.savefig(os.path.join(self.plots_dir, f"{self.algorithm_name}_{self.current_benchmark}.png"))
             plt.close()
         else:
             print(f"No data to plot for {self.current_benchmark}")
-
 
     def callback(self, iteration, best_fitness):
         if iteration % self.plot_interval == 0:

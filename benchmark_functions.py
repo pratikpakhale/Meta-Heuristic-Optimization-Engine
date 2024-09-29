@@ -32,6 +32,8 @@ def zakharov(x):
 def dixon_price(x):
     return (x[0] - 1)**2 + np.sum((np.arange(2, len(x)+1) * (2 * x[1:]**2 - x[:-1])**2))
 
+
+
 benchmark_functions = {
     "Schwefel": {
         "function": schwefel,
@@ -104,3 +106,5 @@ benchmark_functions = {
         "GLOBAL_OPTIMUM": 0
     }
 }
+
+

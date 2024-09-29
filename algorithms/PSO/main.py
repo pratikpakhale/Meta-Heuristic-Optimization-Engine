@@ -13,7 +13,7 @@ def particle_swarm_optimization(func, dim, lower_bound, upper_bound, num_particl
     global_best = personal_best[np.argmin(personal_best_fitness)]
     global_best_fitness = np.min(personal_best_fitness)
 
-    for _ in range(max_iter):
+    for iteration in range(max_iter):
         
         r1, r2 = np.random.rand(2)
         velocities = (w * velocities + 
@@ -33,9 +33,8 @@ def particle_swarm_optimization(func, dim, lower_bound, upper_bound, num_particl
         if np.min(fitness) < global_best_fitness:
             global_best = particles[np.argmin(fitness)]
             global_best_fitness = np.min(fitness)
-        if callback and global_optimum:
-            closeness_to_optimum = abs(global_best_fitness - global_optimum)
-            callback(global_best_fitness, closeness_to_optimum)
+        if callback:
+            callback(iteration, global_best_fitness)
 
     return {
         "best_solution": global_best,
