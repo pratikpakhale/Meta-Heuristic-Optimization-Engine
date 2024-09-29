@@ -10,7 +10,6 @@ def socio_nomadic_learning_optimizer(
     lower_bound,
     upper_bound,
     callback=None,
-    global_optimum=None,
     **kwargs
 ):
     """
@@ -338,11 +337,12 @@ def socio_nomadic_learning_optimizer(
                         clan['leader']['fitness'] = f_r_new
 
                         # Update global best if necessary
+                        if callback:
+                            callback(iteration, best_fitness)
                         if f_r_new < best_fitness:
                             best_fitness = f_r_new
                             best_solution = r_new.copy()
-                        if callback:
-                            callback(iteration, f_r_new)
+                        
 
         # Adjust learning parameters
         alpha *= decay_factor

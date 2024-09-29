@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 
 class OptimizationEngine:
-    def __init__(self, benchmark_functions: Dict[str, Dict[str, Any]], algorithm: Callable, algorithm_name: str, plot_interval=10):
+    def __init__(self, benchmark_functions: Dict[str, Dict[str, Any]], algorithm: Callable, algorithm_name: str, plot_interval=5):
         self.benchmark_functions = benchmark_functions
         self.algorithm = algorithm
         self.algorithm_name = algorithm_name
@@ -34,7 +34,18 @@ class OptimizationEngine:
             plt.title(f"Convergence Plot - {self.algorithm_name} - {self.current_benchmark}")
             plt.xlabel("Iteration")
             plt.ylabel("Best Fitness")
-            plt.grid(True)
+
+            # Check if all fitness values are positive
+            if all(f > 0 for f in self.fitness_history[self.current_benchmark]):
+                plt.yscale('log')  # Use log scale for positive values only
+                # plt.grid(True, which="both", ls="--")
+            else:
+                # Adjust y-axis limits for better visualization of negative values
+                min_fitness = min(self.fitness_history[self.current_benchmark])
+                max_fitness = max(self.fitness_history[self.current_benchmark])
+                plt.ylim(min_fitness - 0.1 * abs(min_fitness), max_fitness + 0.1 * abs(max_fitness))
+                plt.grid(True)
+
             plt.savefig(os.path.join(self.plots_dir, f"{self.algorithm_name}_{self.current_benchmark}.png"))
             plt.close()
         else:
