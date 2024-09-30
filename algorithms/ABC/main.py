@@ -93,5 +93,6 @@ def artificial_bee_colony(func, dim, lower_bound, upper_bound, callback=None, **
         "std_dev_fitness": std_dev_fitness,
         "worst_fitness": worst_fitness,
         "median_fitness": median_fitness,
-        "all_fitness_values": all_fitness_values
+        'all_fitness_values': all_fitness_values  # List of arrays for each iteration
+        
     }

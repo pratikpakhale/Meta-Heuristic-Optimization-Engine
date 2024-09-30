@@ -6,6 +6,8 @@ from datetime import datetime
 import os
 import csv
 import matplotlib.pyplot as plt
+from matplotlib import cm
+from benchmark_functions import benchmark_functions
 
 class OptimizationEngine:
     def __init__(self, benchmark_functions: Dict[str, Dict[str, Any]], algorithms: Dict[str, Callable], plot_interval=1):
@@ -133,74 +135,30 @@ class OptimizationEngine:
             plt.savefig(os.path.join(self.plots_dir, f"comparative_{func_name}.png"))
             plt.close()
 
+    def plot_3d_surface(self,func, x_range, y_range, title, filename, grid_size=100):
+        """
+        Plots a 3D surface for a given 2D function and saves the plot as an image.
+        """
+        x = np.linspace(x_range[0], x_range[1], grid_size)
+        y = np.linspace(y_range[0], y_range[1], grid_size)
+        X, Y = np.meshgrid(x, y)
 
-    def plot_comparative_results_3d_surface(self):
-        max_iterations = 100  # Adjust this based on your data
-        algorithms = list(self.algorithms.keys())
-        func_names = self.benchmark_functions
+        # Evaluate the function on the grid
+        Z = np.array([[func([x_i, y_j]) for x_i in x] for y_j in y])
 
-        for func_name in func_names:
-            fig = plt.figure(figsize=(12, 8))
-            ax = fig.add_subplot(111, projection='3d')
+        # Create the plot
+        fig = plt.figure(figsize=(10, 7))
+        ax = fig.add_subplot(111, projection='3d')
+        surf = ax.plot_surface(X, Y, Z, cmap=cm.viridis, edgecolor='none', alpha=0.8)
+        ax.set_title(title)
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        fig.colorbar(surf, shrink=0.5, aspect=5)
 
-            has_data = False
-            fitness_matrix = []
-
-            for algo_name in algorithms:
-                if func_name in self.fitness_history[algo_name] and self.fitness_history[algo_name][func_name]:
-                    fitness_values = self.fitness_history[algo_name][func_name]
-
-                    # Ensure fitness_values has a length of max_iterations
-                    fitness_values = list(fitness_values)
-                    if len(fitness_values) < max_iterations:
-                        last_value = fitness_values[-1]
-                        fitness_values.extend([last_value] * (max_iterations - len(fitness_values)))
-                    else:
-                        fitness_values = fitness_values[:max_iterations]
-
-                    fitness_matrix.append(fitness_values)
-                    has_data = True
-
-            if not has_data:
-                self.logger.warning(f"No data available for function: {func_name}")
-                plt.close()
-                continue
-
-            fitness_matrix = np.array(fitness_matrix)
-
-            # Create meshgrid for plotting
-            X, Y = np.meshgrid(np.arange(max_iterations), np.arange(len(algorithms)))
-
-            # Z-axis data
-            Z = fitness_matrix
-
-            # Plot the surface
-            surf = ax.plot_surface(X, Y, Z, cmap='viridis', edgecolor='none', antialiased=True)
-
-            # Set labels and title
-            ax.set_title(f"3D Convergence Surface Plot - {func_name}")
-            ax.set_xlabel('Iteration')
-            ax.set_ylabel('Algorithm')
-            ax.set_zlabel('Best Fitness')
-
-            # Customize the y-axis to display algorithm names
-            ax.set_yticks(range(len(algorithms)))
-            ax.set_yticklabels(algorithms)
-
-            # Add a color bar for the fitness values
-            cbar = fig.colorbar(surf, ax=ax, shrink=0.5, aspect=10, pad=0.1)
-            cbar.set_label('Fitness Value')
-
-            # Adjust the viewing angle (optional)
-            ax.view_init(elev=30, azim=-45)
-
-            # Tight layout to prevent clipping
-            plt.tight_layout()
-
-            # Save the figure
-            plt.savefig(os.path.join(self.plots_dir, f"comparative_3d_surface_{func_name}.png"))
-            plt.close()
-
+        # Save the plot
+        plt.savefig(filename, dpi=300)
+        plt.close() 
    
     def run_single_optimization(self, algo_name, func_name, func_details):
         self.logger.info(f"\n--- Starting optimization for {algo_name} on {func_name} ---")
@@ -233,6 +191,7 @@ class OptimizationEngine:
         worst_fitness = result['worst_fitness']
         closeness_to_optimum = abs(best_fitness - func_details['GLOBAL_OPTIMUM'])
         best_solution = np.array2string(result['best_solution'], precision=4, suppress_small=True)
+        all_fitness_values = result['all_fitness_values']
 
         self.logger.info("\nOptimization completed")
         self.logger.info(f"Execution time: {execution_time:.2f} seconds")
@@ -260,7 +219,8 @@ class OptimizationEngine:
             'Closeness to Global Optimum': closeness_to_optimum,
             'Execution Time (s)': execution_time,
             'Best Solution': best_solution,
-            'Random Seed': random_seed
+            'Random Seed': random_seed,
+            'All fitness values': all_fitness_values
         }
 
 
@@ -276,10 +236,17 @@ class OptimizationEngine:
             for func_name, func_details in self.benchmark_functions.items():
                 result = self.run_single_optimization(algo_name, func_name, func_details)
                 results.append(result)
-
+        for func_name, func_details in self.benchmark_functions.items():
+            # if func_details["DIMENSION"] == 2:
+            x_range = [func_details["LOWER_BOUND"], func_details["UPPER_BOUND"]]
+            y_range = [func_details["LOWER_BOUND"], func_details["UPPER_BOUND"]]
+            title = f"{func_name} Function"
+            filename = f'plots/{func_name.lower().replace("-", "_")}.png'  # Construct filename
+            self.logger.info(f"Plotting {func_name} function...")
+            
+            self.plot_3d_surface(func_details["function"], x_range, y_range, title, filename)
         self.save_results_to_csv(results)
         # self.plot_all_convergences()
-        # self.plot_comparative_results_3d_surface()
         self.plot_comparative_results()
         self.logger.info("\n=== Optimization Engine Finished ===")
 

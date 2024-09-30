@@ -67,12 +67,5 @@ def particle_swarm_optimization(func, dim, lower_bound, upper_bound, num_particl
         "median_fitness": overall_median_fitness,
         "std_dev_fitness": overall_std_fitness,
         "worst_fitness": overall_worst_fitness,
-        "fitness_history": {
-            "best": all_best_fitness,
-            "mean": all_mean_fitness,
-            "median": all_median_fitness,
-            "std_dev": all_std_fitness,
-            "worst": all_worst_fitness,
-            "all_fitness_values": all_fitness_values  # List of arrays for each iteration
-        }
+        "all_fitness_values": all_fitness_values  # List of arrays for each iteration
     }
