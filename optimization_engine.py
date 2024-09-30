@@ -23,7 +23,8 @@ class OptimizationEngine:
         self.plots_dir = "plots"
         self.logs_dir = "logs"
         self.csv_dir = "csv_results"
-        for directory in [self.plots_dir, self.logs_dir, self.csv_dir]:
+        self.json_dir = "json_results"
+        for directory in [self.plots_dir, self.logs_dir, self.csv_dir, self.json_dir]:
             os.makedirs(directory, exist_ok=True)
 
     def setup_logging(self):
@@ -59,6 +60,21 @@ class OptimizationEngine:
             
             self.iteration_history[algo_name][func_name].append(iteration)
             self.fitness_history[algo_name][func_name].append(best_fitness)
+
+
+    def save_all_iterations(self):
+        # Prepare data to be saved
+        all_data = {
+            "iterations": self.iteration_history,
+            "fitness": self.fitness_history
+        }
+        
+        # Define the JSON file path
+        json_file_path = os.path.join(self.json_dir, "all_iterations_fitness.json")
+        
+        # Write data to JSON file
+        with open(json_file_path, 'w') as json_file:
+            json.dump(all_data, json_file, indent=4)
 
 
     def plot_convergence(self, algo_name, func_name):
@@ -246,6 +262,7 @@ class OptimizationEngine:
             
             self.plot_3d_surface(func_details["function"], x_range, y_range, title, filename)
         self.save_results_to_csv(results)
+        self.save_all_iterations()
         # self.plot_all_convergences()
         self.plot_comparative_results()
         self.logger.info("\n=== Optimization Engine Finished ===")
