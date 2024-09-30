@@ -95,7 +95,6 @@ class OptimizationEngine:
         plt.savefig(os.path.join(self.plots_dir, f"{algo_name}_{func_name}.png"))
         plt.close()
 
-
     def plot_comparative_results(self):
         max_iterations = 100  # Adjust this if needed
         for func_name in self.benchmark_functions:
@@ -149,6 +148,33 @@ class OptimizationEngine:
             plt.tight_layout()
 
             plt.savefig(os.path.join(self.plots_dir, f"comparative_{func_name}.png"))
+            plt.close()
+
+    def plot_box_results(self):
+        for func_name in self.benchmark_functions:
+            plt.figure(figsize=(12, 8))
+            data_to_plot = []
+
+            for algo_name in self.algorithms:
+                if func_name in self.fitness_history[algo_name] and self.fitness_history[algo_name][func_name]:
+                    fitness_values = self.fitness_history[algo_name][func_name]
+                    data_to_plot.append(fitness_values)
+
+            if not data_to_plot:
+                self.logger.warning(f"No data available for function: {func_name}")
+                plt.close()
+                continue
+
+            plt.boxplot(data_to_plot, labels=self.algorithms)
+            plt.title(f"Box Plot of Fitness Values - {func_name}")
+            plt.xlabel("Algorithms")
+            plt.ylabel("Fitness Values")
+            plt.grid(True)
+
+            # Use tight layout to adjust spacing
+            plt.tight_layout()
+
+            plt.savefig(os.path.join(self.plots_dir, f"boxplot_{func_name}.png"))
             plt.close()
 
     def plot_3d_surface(self,func, x_range, y_range, title, filename, grid_size=100):
@@ -239,7 +265,6 @@ class OptimizationEngine:
             'All fitness values': all_fitness_values
         }
 
-
     def run_optimization(self):
         self.logger.info("=== Optimization Engine Started ===")
         for algo_name, algo_func in self.algorithms.items():
@@ -252,13 +277,11 @@ class OptimizationEngine:
             for func_name, func_details in self.benchmark_functions.items():
                 result = self.run_single_optimization(algo_name, func_name, func_details)
                 results.append(result)
-        for func_name, func_details in self.benchmark_functions.items():
-            # if func_details["DIMENSION"] == 2:
-            x_range = [func_details["LOWER_BOUND"], func_details["UPPER_BOUND"]]
-            y_range = [func_details["LOWER_BOUND"], func_details["UPPER_BOUND"]]
-            title = f"{func_name} Function"
-            filename = f'plots/{func_name.lower().replace("-", "_")}.png'  # Construct filename
-            self.logger.info(f"Plotting {func_name} function...")
+                x_range = [func_details["LOWER_BOUND"], func_details["UPPER_BOUND"]]
+                y_range = [func_details["LOWER_BOUND"], func_details["UPPER_BOUND"]]
+                title = f"{func_name} Function"
+                filename = f'plots/{func_name.lower().replace("-", "_")}.png'  # Construct filename
+                self.logger.info(f"Plotting {func_name} function...")
             
             self.plot_3d_surface(func_details["function"], x_range, y_range, title, filename)
         self.save_results_to_csv(results)
@@ -267,7 +290,6 @@ class OptimizationEngine:
         self.plot_comparative_results()
         self.logger.info("\n=== Optimization Engine Finished ===")
 
-    
     def save_results_to_csv(self, results: List[Dict[str, Any]]):
         csv_filename = os.path.join(self.csv_dir, f"results_{self.timestamp}.csv")
         fieldnames = ['Timestamp', 'Log File', 'Algorithm', 'Function', 'Dimension', 
@@ -299,8 +321,6 @@ class OptimizationEngine:
                     'Random Seed': result['Random Seed']
                 }
                 writer.writerow(row)
-
-
 
     def plot_all_convergences(self):
         for algo_name in self.algorithms:
