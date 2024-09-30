@@ -69,7 +69,12 @@ def socio_evolution_learning_optimization(objective_function, dimension, lower_b
 
         families.append(family)
 
-    
+    all_best_fitness = []
+    all_mean_fitness = []
+    all_median_fitness = []
+    all_std_fitness = []
+    all_worst_fitness = []
+    all_fitness_values = []
     for iteration in range(max_iter):
         
         all_parents = [parent for family in families for parent in family['parents']]
@@ -195,26 +200,61 @@ def socio_evolution_learning_optimization(objective_function, dimension, lower_b
         alpha = max(alpha, 0)
         beta = min(beta, 1 - alpha)
 
+        iteration_fitness_values = []
+        for family in families:
+            for parent in family['parents']:
+                iteration_fitness_values.append(parent['fitness'])
+            for child in family['children']:
+                iteration_fitness_values.append(child['fitness'])
+
+        # Calculate statistics for this iteration
+        best_fitness = min(iteration_fitness_values)
+        mean_fitness = np.mean(iteration_fitness_values)
+        median_fitness = np.median(iteration_fitness_values)
+        std_fitness = np.std(iteration_fitness_values)
+        worst_fitness = max(iteration_fitness_values)
+
+        # Store the statistics
+        all_best_fitness.append(best_fitness)
+        all_mean_fitness.append(mean_fitness)
+        all_median_fitness.append(median_fitness)
+        all_std_fitness.append(std_fitness)
+        all_worst_fitness.append(worst_fitness)
+        all_fitness_values.append(iteration_fitness_values)
+
         if callback is not None:
-            # Collect all individuals (parents and children)
-            all_individuals = []
-            for family in families:
-                all_individuals.extend(family['parents'] + family['children'])
-            # Find the best fitness among all individuals
-            best_individual = min(all_individuals, key=lambda x: x['fitness'])
-            curr_fitness = best_individual['fitness']
-            # Call the callback with the iteration number and current best fitness
-            callback(iteration, curr_fitness)
+            callback(iteration, best_fitness)
 
 
 
     
+    # Calculate overall statistics
+    all_fitness_values_flat = [item for sublist in all_fitness_values for item in sublist]
+    overall_mean_fitness = np.mean(all_fitness_values_flat)
+    overall_median_fitness = np.median(all_fitness_values_flat)
+    overall_std_fitness = np.std(all_fitness_values_flat)
+    overall_worst_fitness = max(all_fitness_values_flat)
+
+    # Find the best solution
     all_individuals = []
     for family in families:
         all_individuals.extend(family['parents'] + family['children'])
     best_individual = min(all_individuals, key=lambda x: x['fitness'])
+
     result = {
         'best_solution': best_individual['x'],
         'best_fitness': best_individual['fitness'],
+        'mean_fitness': overall_mean_fitness,
+        'median_fitness': overall_median_fitness,
+        'std_dev_fitness': overall_std_fitness,
+        'worst_fitness': overall_worst_fitness,
+        'fitness_history': {
+            'best': all_best_fitness,
+            'mean': all_mean_fitness,
+            'median': all_median_fitness,
+            'std_dev': all_std_fitness,
+            'worst': all_worst_fitness,
+            'all_fitness_values': all_fitness_values
+        }
     }
     return result

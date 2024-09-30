@@ -134,6 +134,73 @@ class OptimizationEngine:
             plt.close()
 
 
+    def plot_comparative_results_3d_surface(self):
+        max_iterations = 100  # Adjust this based on your data
+        algorithms = list(self.algorithms.keys())
+        func_names = self.benchmark_functions
+
+        for func_name in func_names:
+            fig = plt.figure(figsize=(12, 8))
+            ax = fig.add_subplot(111, projection='3d')
+
+            has_data = False
+            fitness_matrix = []
+
+            for algo_name in algorithms:
+                if func_name in self.fitness_history[algo_name] and self.fitness_history[algo_name][func_name]:
+                    fitness_values = self.fitness_history[algo_name][func_name]
+
+                    # Ensure fitness_values has a length of max_iterations
+                    fitness_values = list(fitness_values)
+                    if len(fitness_values) < max_iterations:
+                        last_value = fitness_values[-1]
+                        fitness_values.extend([last_value] * (max_iterations - len(fitness_values)))
+                    else:
+                        fitness_values = fitness_values[:max_iterations]
+
+                    fitness_matrix.append(fitness_values)
+                    has_data = True
+
+            if not has_data:
+                self.logger.warning(f"No data available for function: {func_name}")
+                plt.close()
+                continue
+
+            fitness_matrix = np.array(fitness_matrix)
+
+            # Create meshgrid for plotting
+            X, Y = np.meshgrid(np.arange(max_iterations), np.arange(len(algorithms)))
+
+            # Z-axis data
+            Z = fitness_matrix
+
+            # Plot the surface
+            surf = ax.plot_surface(X, Y, Z, cmap='viridis', edgecolor='none', antialiased=True)
+
+            # Set labels and title
+            ax.set_title(f"3D Convergence Surface Plot - {func_name}")
+            ax.set_xlabel('Iteration')
+            ax.set_ylabel('Algorithm')
+            ax.set_zlabel('Best Fitness')
+
+            # Customize the y-axis to display algorithm names
+            ax.set_yticks(range(len(algorithms)))
+            ax.set_yticklabels(algorithms)
+
+            # Add a color bar for the fitness values
+            cbar = fig.colorbar(surf, ax=ax, shrink=0.5, aspect=10, pad=0.1)
+            cbar.set_label('Fitness Value')
+
+            # Adjust the viewing angle (optional)
+            ax.view_init(elev=30, azim=-45)
+
+            # Tight layout to prevent clipping
+            plt.tight_layout()
+
+            # Save the figure
+            plt.savefig(os.path.join(self.plots_dir, f"comparative_3d_surface_{func_name}.png"))
+            plt.close()
+
    
     def run_single_optimization(self, algo_name, func_name, func_details):
         self.logger.info(f"\n--- Starting optimization for {algo_name} on {func_name} ---")
@@ -160,12 +227,20 @@ class OptimizationEngine:
         execution_time = (end_time - start_time).total_seconds()
 
         best_fitness = result['best_fitness']
+        mean_fitness = result['mean_fitness']
+        median_fitness = result['median_fitness']
+        std_dev_fitness = result['std_dev_fitness']
+        worst_fitness = result['worst_fitness']
         closeness_to_optimum = abs(best_fitness - func_details['GLOBAL_OPTIMUM'])
         best_solution = np.array2string(result['best_solution'], precision=4, suppress_small=True)
 
         self.logger.info("\nOptimization completed")
         self.logger.info(f"Execution time: {execution_time:.2f} seconds")
         self.logger.info(f"Best fitness: {best_fitness:.6f}")
+        self.logger.info(f"Mean fitness: {mean_fitness:.6f}")
+        self.logger.info(f"Median fitness: {median_fitness:.6f}")
+        self.logger.info(f"Std dev fitness: {std_dev_fitness:.6f}")
+        self.logger.info(f"Worst fitness: {worst_fitness:.6f}")
         self.logger.info(f"Closeness from global optimum: {closeness_to_optimum:.6e}")
         self.logger.info(f"Best solution: {best_solution}")
         self.logger.info("-" * 40)
@@ -178,11 +253,16 @@ class OptimizationEngine:
             'Upper Bound': func_details['UPPER_BOUND'],
             'Global Optimum': func_details['GLOBAL_OPTIMUM'],
             'Best Fitness': best_fitness,
+            'Mean Fitness': mean_fitness,
+            'Median Fitness': median_fitness,
+            'Std Dev Fitness': std_dev_fitness,
+            'Worst Fitness': worst_fitness,
             'Closeness to Global Optimum': closeness_to_optimum,
             'Execution Time (s)': execution_time,
             'Best Solution': best_solution,
             'Random Seed': random_seed
         }
+
 
     def run_optimization(self):
         self.logger.info("=== Optimization Engine Started ===")
@@ -198,7 +278,8 @@ class OptimizationEngine:
                 results.append(result)
 
         self.save_results_to_csv(results)
-        self.plot_all_convergences()
+        # self.plot_all_convergences()
+        # self.plot_comparative_results_3d_surface()
         self.plot_comparative_results()
         self.logger.info("\n=== Optimization Engine Finished ===")
 
@@ -206,8 +287,9 @@ class OptimizationEngine:
     def save_results_to_csv(self, results: List[Dict[str, Any]]):
         csv_filename = os.path.join(self.csv_dir, f"results_{self.timestamp}.csv")
         fieldnames = ['Timestamp', 'Log File', 'Algorithm', 'Function', 'Dimension', 
-                      'Lower Bound', 'Upper Bound', 'Global Optimum', 'Best Fitness', 
-                      'Closeness to Global Optimum', 'Execution Time (s)', 'Best Solution', 'Random Seed']
+                    'Lower Bound', 'Upper Bound', 'Global Optimum', 'Best Fitness', 
+                    'Mean Fitness', 'Median Fitness', 'Std Dev Fitness', 'Worst Fitness',
+                    'Closeness to Global Optimum', 'Execution Time (s)', 'Best Solution', 'Random Seed']
         
         with open(csv_filename, 'w', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -216,9 +298,25 @@ class OptimizationEngine:
                 row = {
                     'Timestamp': self.timestamp,
                     'Log File': os.path.basename(self.log_filename),
-                    **result
+                    'Algorithm': result['Algorithm'],
+                    'Function': result['Function'],
+                    'Dimension': result['Dimension'],
+                    'Lower Bound': result['Lower Bound'],
+                    'Upper Bound': result['Upper Bound'],
+                    'Global Optimum': result['Global Optimum'],
+                    'Best Fitness': result['Best Fitness'],
+                    'Mean Fitness': result['Mean Fitness'],
+                    'Median Fitness': result['Median Fitness'],
+                    'Std Dev Fitness': result['Std Dev Fitness'],
+                    'Worst Fitness': result['Worst Fitness'],
+                    'Closeness to Global Optimum': result['Closeness to Global Optimum'],
+                    'Execution Time (s)': result['Execution Time (s)'],
+                    'Best Solution': str(result['Best Solution']),
+                    'Random Seed': result['Random Seed']
                 }
                 writer.writerow(row)
+
+
 
     def plot_all_convergences(self):
         for algo_name in self.algorithms:

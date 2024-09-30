@@ -16,6 +16,9 @@ def artificial_bee_colony(func, dim, lower_bound, upper_bound, callback=None, **
     best_solution = food_sources[best_idx].copy()
     best_fitness = fitness[best_idx]
 
+    # Initialize list to store all fitness values for each iteration
+    all_fitness_values = []
+
     for iteration in range(max_iter):
         # Employed Bee Phase
         for i in range(num_bees):
@@ -69,11 +72,26 @@ def artificial_bee_colony(func, dim, lower_bound, upper_bound, callback=None, **
             best_solution = food_sources[best_idx].copy()
             best_fitness = fitness[best_idx]
 
+        # Store all fitness values for this iteration
+        all_fitness_values.append(fitness.copy())
+
         # Callback
         if callback:
             callback(iteration, best_fitness)
 
+    # Calculate additional statistics
+    all_fitness_array = np.array(all_fitness_values)
+    mean_fitness = np.mean(all_fitness_array)
+    std_dev_fitness = np.std(all_fitness_array)
+    worst_fitness = np.max(all_fitness_array)
+    median_fitness = np.median(all_fitness_array)
+
     return {
         "best_solution": best_solution,
-        "best_fitness": best_fitness
+        "best_fitness": best_fitness,
+        "mean_fitness": mean_fitness,
+        "std_dev_fitness": std_dev_fitness,
+        "worst_fitness": worst_fitness,
+        "median_fitness": median_fitness,
+        "all_fitness_values": all_fitness_values
     }

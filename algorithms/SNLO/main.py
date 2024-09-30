@@ -106,7 +106,13 @@ def socio_nomadic_learning_optimizer(
     # Initialize global best
     best_solution = None
     best_fitness = np.inf
-
+    all_best_fitness = []
+    all_mean_fitness = []
+    all_median_fitness = []
+    all_std_fitness = []
+    all_worst_fitness = []
+    all_fitness_values = []
+    iteration_fitness_values = []
     # Iterative optimization process
     for iteration in range(1, max_iterations + 1):
         # For each clan
@@ -305,7 +311,13 @@ def socio_nomadic_learning_optimizer(
             if leader['fitness'] < best_fitness:
                 best_fitness = leader['fitness']
                 best_solution = leader['position'].copy()
-
+        for clan in clans:
+            iteration_fitness_values.append(clan['leader']['fitness'])
+            for family in clan['families']:
+                for parent in family['parents']:
+                    iteration_fitness_values.append(parent['fitness'])
+                for child in family['children']:
+                    iteration_fitness_values.append(child['fitness'])
         # Periodical Meetings (Inter-Clan Learning)
         if iteration % 5 == 0:
             # Identify the best leader among clans
@@ -343,7 +355,20 @@ def socio_nomadic_learning_optimizer(
                         if callback:
                             callback(iteration, best_fitness)
                         
+        # Calculate statistics for this iteration
+        best_fitness = min(iteration_fitness_values)
+        mean_fitness = np.mean(iteration_fitness_values)
+        median_fitness = np.median(iteration_fitness_values)
+        std_fitness = np.std(iteration_fitness_values)
+        worst_fitness = max(iteration_fitness_values)
 
+        # Store the statistics
+        all_best_fitness.append(best_fitness)
+        all_mean_fitness.append(mean_fitness)
+        all_median_fitness.append(median_fitness)
+        all_std_fitness.append(std_fitness)
+        all_worst_fitness.append(worst_fitness)
+        all_fitness_values.append(iteration_fitness_values)
         # Adjust learning parameters
         alpha *= decay_factor
         beta = min(beta + increment, 1 - alpha)
@@ -353,8 +378,27 @@ def socio_nomadic_learning_optimizer(
         
 
 
+    # Calculate overall statistics
+    all_fitness_values_flat = [item for sublist in all_fitness_values for item in sublist]
+    overall_mean_fitness = np.mean(all_fitness_values_flat)
+    overall_median_fitness = np.median(all_fitness_values_flat)
+    overall_std_fitness = np.std(all_fitness_values_flat)
+    overall_worst_fitness = max(all_fitness_values_flat)
+
     result = {
         'best_solution': best_solution,
-        'best_fitness': best_fitness
+        'best_fitness': best_fitness,
+        'mean_fitness': overall_mean_fitness,
+        'median_fitness': overall_median_fitness,
+        'std_dev_fitness': overall_std_fitness,
+        'worst_fitness': overall_worst_fitness,
+        'fitness_history': {
+            'best': all_best_fitness,
+            'mean': all_mean_fitness,
+            'median': all_median_fitness,
+            'std_dev': all_std_fitness,
+            'worst': all_worst_fitness,
+            'all_fitness_values': all_fitness_values
+        }
     }
     return result

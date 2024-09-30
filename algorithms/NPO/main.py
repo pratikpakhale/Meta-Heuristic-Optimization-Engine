@@ -1,5 +1,3 @@
-# nomadic.py
-
 import numpy as np
 from scipy.special import gamma
 
@@ -28,6 +26,7 @@ def nomadic_people_optimizer(
 
     Returns:
     - A dictionary with the best solution found and its fitness.
+      Additionally, returns statistical information and fitness history.
     """
 
     # Ensure bounds are arrays
@@ -58,8 +57,19 @@ def nomadic_people_optimizer(
     best_leader_position = leaders_positions[best_leader_index].copy()
     best_leader_fitness = leaders_fitness[best_leader_index]
 
+    # Lists to store fitness values for each iteration
+    all_best_fitness = []
+    all_mean_fitness = []
+    all_median_fitness = []
+    all_std_fitness = []
+    all_worst_fitness = []
+    all_fitness_values = []
+
     # Iterative optimization process
     for iteration in range(1, max_iterations + 1):
+        # Fitness values for this iteration
+        iteration_fitness_values = []
+
         # For each clan
         for c in range(num_clans):
             leader_position = leaders_positions[c]
@@ -96,6 +106,9 @@ def nomadic_people_optimizer(
 
             family_positions = np.array(family_positions)
             family_fitnesses = np.array(family_fitnesses)
+
+            # Store fitness values
+            iteration_fitness_values.extend(family_fitnesses)
 
             # Leadership Transition
             min_family_index = np.argmin(family_fitnesses)
@@ -135,6 +148,9 @@ def nomadic_people_optimizer(
 
                     family_positions[i] = new_position
                     family_fitnesses[i] = fitness
+
+                # Store updated fitness values
+                iteration_fitness_values.extend(family_fitnesses)
 
                 # Leadership Transition after exploration
                 min_family_index = np.argmin(family_fitnesses)
@@ -194,12 +210,50 @@ def nomadic_people_optimizer(
                         best_leader_fitness = f_r_new
                         best_leader_position = r_new.copy()
                         best_leader_index = c
-                
+
+                # Store leader fitness after meetings
+                iteration_fitness_values.append(leaders_fitness[c])
+
+        # Aggregate all fitness values (families and leaders) for this iteration
+        total_fitness_values = np.array(iteration_fitness_values + leaders_fitness.tolist())
+
+        # Calculate statistics for this iteration
+        mean_fitness = np.mean(total_fitness_values)
+        median_fitness = np.median(total_fitness_values)
+        std_fitness = np.std(total_fitness_values)
+        worst_fitness = np.max(total_fitness_values)
+
+        all_best_fitness.append(best_leader_fitness)
+        all_mean_fitness.append(mean_fitness)
+        all_median_fitness.append(median_fitness)
+        all_std_fitness.append(std_fitness)
+        all_worst_fitness.append(worst_fitness)
+        all_fitness_values.append(total_fitness_values)
+
         if callback:
             callback(iteration, best_leader_fitness)
 
+    # Calculate overall statistics
+    all_fitness_values_array = np.concatenate(all_fitness_values)
+    overall_mean_fitness = np.mean(all_fitness_values_array)
+    overall_median_fitness = np.median(all_fitness_values_array)
+    overall_std_fitness = np.std(all_fitness_values_array)
+    overall_worst_fitness = np.max(all_fitness_values_array)
+
     result = {
         'best_solution': best_leader_position,
-        'best_fitness': best_leader_fitness
+        'best_fitness': best_leader_fitness,
+        'mean_fitness': overall_mean_fitness,
+        'median_fitness': overall_median_fitness,
+        'std_dev_fitness': overall_std_fitness,
+        'worst_fitness': overall_worst_fitness,
+        'fitness_history': {
+            'best': all_best_fitness,
+            'mean': all_mean_fitness,
+            'median': all_median_fitness,
+            'std_dev': all_std_fitness,
+            'worst': all_worst_fitness,
+            'all_fitness_values': all_fitness_values  # List of arrays for each iteration
+        }
     }
     return result
