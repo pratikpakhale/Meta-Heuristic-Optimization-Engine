@@ -7,7 +7,7 @@ def particle_swarm_optimization(func, dim, lower_bound, upper_bound, num_particl
     
     personal_best = particles.copy()
     personal_best_fitness = np.array([func(p) for p in personal_best])
-    global_best = personal_best[np.argmin(personal_best_fitness)]
+    global_best = personal_best[np.argmin(personal_best_fitness)].copy()
     global_best_fitness = np.min(personal_best_fitness)
 
     # Lists to store fitness statistics for each iteration
@@ -34,7 +34,7 @@ def particle_swarm_optimization(func, dim, lower_bound, upper_bound, num_particl
         personal_best_fitness[improved] = fitness[improved]
 
         if np.min(fitness) < global_best_fitness:
-            global_best = particles[np.argmin(fitness)]
+            global_best = particles[np.argmin(fitness)].copy()
             global_best_fitness = np.min(fitness)
 
         # Store fitness statistics for this iteration
@@ -51,7 +51,14 @@ def particle_swarm_optimization(func, dim, lower_bound, upper_bound, num_particl
         all_fitness_values.append(fitness.copy())
 
         if callback:
-            callback(iteration, global_best_fitness)
+            # Pass the required values to the callback
+            callback(
+                iteration=iteration,
+                best_fitness=global_best_fitness,
+                best_solution=global_best.copy(),
+                avg_fitness=mean_fitness,
+                all_solutions=particles.copy()
+            )
 
     # Calculate overall statistics
     all_fitness_values_array = np.concatenate(all_fitness_values)
