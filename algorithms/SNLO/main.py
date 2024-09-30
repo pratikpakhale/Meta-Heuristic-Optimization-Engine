@@ -337,11 +337,11 @@ def socio_nomadic_learning_optimizer(
                         clan['leader']['fitness'] = f_r_new
 
                         # Update global best if necessary
-                        if callback:
-                            callback(iteration, best_fitness)
                         if f_r_new < best_fitness:
                             best_fitness = f_r_new
                             best_solution = r_new.copy()
+                        if callback:
+                            callback(iteration, best_fitness)
                         
 
         # Adjust learning parameters

@@ -79,6 +79,7 @@ class OptimizationEngine:
 
 
     def plot_comparative_results(self):
+        max_iterations = 100  # Adjust this if needed
         for func_name in self.benchmark_functions:
             plt.figure(figsize=(12, 8))
             all_positive = True
@@ -89,8 +90,18 @@ class OptimizationEngine:
             for algo_name in self.algorithms:
                 if func_name in self.fitness_history[algo_name] and self.fitness_history[algo_name][func_name]:
                     fitness_values = self.fitness_history[algo_name][func_name]
-                    plt.plot(self.iteration_history[algo_name][func_name], fitness_values, label=algo_name)
-                    
+
+                    # Adjust fitness_values to have length max_iterations
+                    fitness_values = list(fitness_values)
+                    if len(fitness_values) < max_iterations:
+                        last_value = fitness_values[-1]
+                        fitness_values.extend([last_value] * (max_iterations - len(fitness_values)))
+                    else:
+                        fitness_values = fitness_values[:max_iterations]
+
+                    iterations = list(range(max_iterations))
+                    plt.plot(iterations, fitness_values, label=algo_name)
+
                     if any(f <= 0 for f in fitness_values):
                         all_positive = False
                     min_fitness = min(min_fitness, min(fitness_values))
@@ -108,13 +119,20 @@ class OptimizationEngine:
             plt.legend()
             plt.grid(True)
 
-            if all_positive:
-                plt.yscale('log')
-            else:
-                plt.ylim(min_fitness - 0.1 * abs(min_fitness), max_fitness + 0.1 * abs(max_fitness))
+            # Adjust y-axis limits to add extra space at the bottom
+            ymin, ymax = plt.ylim()
+            y_margin = 0.1 * abs(ymax - ymin)  # 10% of the y-range
+            plt.ylim(ymin - y_margin, ymax + y_margin)
+
+            # Optionally, adjust margins around the plot
+            plt.margins(x=0, y=0.1)  # Adds a 10% margin on the y-axis
+
+            # Use tight layout to adjust spacing
+            plt.tight_layout()
 
             plt.savefig(os.path.join(self.plots_dir, f"comparative_{func_name}.png"))
             plt.close()
+
 
    
     def run_single_optimization(self, algo_name, func_name, func_details):

@@ -8,5 +8,5 @@
   "max_iter": 100,
   "decay_factor": 0.95,
   "increment": 0.05,
-  "random_seed": 15
+  "random_seed": 40
 }
