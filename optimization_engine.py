@@ -277,16 +277,20 @@ class OptimizationEngine:
             for func_name, func_details in self.benchmark_functions.items():
                 result = self.run_single_optimization(algo_name, func_name, func_details)
                 results.append(result)
-                x_range = [func_details["LOWER_BOUND"], func_details["UPPER_BOUND"]]
-                y_range = [func_details["LOWER_BOUND"], func_details["UPPER_BOUND"]]
-                title = f"{func_name} Function"
-                filename = f'plots/{func_name.lower().replace("-", "_")}.png'  # Construct filename
-                self.logger.info(f"Plotting {func_name} function...")
-            
-            self.plot_3d_surface(func_details["function"], x_range, y_range, title, filename)
+                
+                # Only attempt to plot 3D surface if the function is plottable
+                if func_details.get("can_plot_3d", True):
+                    x_range = [func_details["LOWER_BOUND"][0], func_details["UPPER_BOUND"][0]]
+                    y_range = [func_details["LOWER_BOUND"][1], func_details["UPPER_BOUND"][1]]
+                    title = f"{func_name} Function"
+                    filename = f'plots/{func_name.lower().replace("-", "_")}.png'
+                    self.logger.info(f"Plotting {func_name} function...")
+                    self.plot_3d_surface(func_details["function"], x_range, y_range, title, filename)
+                else:
+                    self.logger.info(f"Skipping 3D plot for {func_name} - higher dimensional problem")
+
         self.save_results_to_csv(results)
         self.save_all_iterations()
-        # self.plot_all_convergences()
         self.plot_comparative_results()
         self.logger.info("\n=== Optimization Engine Finished ===")
 
