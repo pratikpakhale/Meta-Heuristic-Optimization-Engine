@@ -1,0 +1,1 @@
+from algorithms.HGS.main import hunger_games_search

@@ -1,6 +1,6 @@
 from optimization_engine import OptimizationEngine
 from benchmark_functions import benchmark_functions
-from algorithms import socio_evolution_learning_optimization, nomadic_people_optimizer, socio_nomadic_learning_optimizer, particle_swarm_optimization, artificial_bee_colony
+from algorithms import socio_evolution_learning_optimization, nomadic_people_optimizer, socio_nomadic_learning_optimizer, particle_swarm_optimization, artificial_bee_colony, hunger_games_search
 
 if __name__ == "__main__":
     algorithms = {
@@ -8,7 +8,8 @@ if __name__ == "__main__":
         # "SELO": socio_evolution_learning_optimization,
         # "NPO": nomadic_people_optimizer,
         # "SNLO": socio_nomadic_learning_optimizer,
-        "PSO": particle_swarm_optimization
+        # "PSO": particle_swarm_optimization,
+        "HGS": hunger_games_search
     }
 
     engine = OptimizationEngine(benchmark_functions, algorithms, plot_interval=1)

@@ -23,6 +23,8 @@ def nomadic_people_optimizer(
     - max_iterations: Maximum number of iterations.
     - num_clans: Number of clans (swarms).
     - families_per_clan: Number of families per clan.
+    - callback: A function to call at each iteration with signature
+                callback(iteration, best_fitness, best_solution, avg_fitness, all_solutions)
 
     Returns:
     - A dictionary with the best solution found and its fitness.
@@ -67,8 +69,9 @@ def nomadic_people_optimizer(
 
     # Iterative optimization process
     for iteration in range(1, max_iterations + 1):
-        # Fitness values for this iteration
+        # Initialize lists to store fitness and positions for this iteration
         iteration_fitness_values = []
+        iteration_positions = []
 
         # For each clan
         for c in range(num_clans):
@@ -107,8 +110,9 @@ def nomadic_people_optimizer(
             family_positions = np.array(family_positions)
             family_fitnesses = np.array(family_fitnesses)
 
-            # Store fitness values
-            iteration_fitness_values.extend(family_fitnesses)
+            # Store fitness values and positions for this clan
+            iteration_fitness_values.extend(family_fitnesses.tolist())
+            iteration_positions.extend(family_positions.tolist())
 
             # Leadership Transition
             min_family_index = np.argmin(family_fitnesses)
@@ -149,8 +153,9 @@ def nomadic_people_optimizer(
                     family_positions[i] = new_position
                     family_fitnesses[i] = fitness
 
-                # Store updated fitness values
-                iteration_fitness_values.extend(family_fitnesses)
+                # Store updated fitness values and positions after exploration
+                iteration_fitness_values.extend(family_fitnesses.tolist())
+                iteration_positions.extend(family_positions.tolist())
 
                 # Leadership Transition after exploration
                 min_family_index = np.argmin(family_fitnesses)
@@ -211,11 +216,18 @@ def nomadic_people_optimizer(
                         best_leader_position = r_new.copy()
                         best_leader_index = c
 
-                # Store leader fitness after meetings
+                # Store updated leader fitness and position
                 iteration_fitness_values.append(leaders_fitness[c])
+                iteration_positions.append(leaders_positions[c].tolist())
 
-        # Aggregate all fitness values (families and leaders) for this iteration
-        total_fitness_values = np.array(iteration_fitness_values + leaders_fitness.tolist())
+        # Append leaders' positions and fitnesses if not updated in periodical meetings
+        if iteration % 5 != 0:
+            iteration_fitness_values.extend(leaders_fitness.tolist())
+            iteration_positions.extend(leaders_positions.tolist())
+
+        # Aggregate all fitness values and positions for this iteration
+        total_fitness_values = np.array(iteration_fitness_values)
+        total_positions = np.array(iteration_positions)
 
         # Calculate statistics for this iteration
         mean_fitness = np.mean(total_fitness_values)
@@ -231,7 +243,13 @@ def nomadic_people_optimizer(
         all_fitness_values.append(total_fitness_values)
 
         if callback:
-            callback(iteration, best_leader_fitness)
+            callback(
+                iteration,
+                best_leader_fitness,
+                best_leader_position,
+                mean_fitness,
+                total_positions
+            )
 
     # Calculate overall statistics
     all_fitness_values_array = np.concatenate(all_fitness_values)

@@ -8,7 +8,6 @@ import csv
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from benchmark_functions import benchmark_functions
-from sklearn.decomposition import PCA
 
 class OptimizationEngine:
     def __init__(self, benchmark_functions: Dict[str, Dict[str, Any]], algorithms: Dict[str, Callable], plot_interval=1):
@@ -35,9 +34,6 @@ class OptimizationEngine:
         self.logger = logging.getLogger("OptimizationEngine")
         self.logger.setLevel(logging.INFO)
 
-        # Clear any existing handlers
-        self.logger.handlers = []
-
         file_handler = logging.FileHandler(self.log_filename)
         console_handler = logging.StreamHandler()
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -56,44 +52,22 @@ class OptimizationEngine:
     def setup_data_structures(self):
         self.iteration_history = {algo: {func: [] for func in self.benchmark_functions} for algo in self.algorithms}
         self.fitness_history = {algo: {func: [] for func in self.benchmark_functions} for algo in self.algorithms}
-        self.avg_fitness_history = {algo: {func: [] for func in self.benchmark_functions} for algo in self.algorithms}
-        self.best_solution_history = {algo: {func: [] for func in self.benchmark_functions} for algo in self.algorithms}
-        self.trajectory_first_dimension = {algo: {func: [] for func in self.benchmark_functions} for algo in self.algorithms}
-        self.all_solutions_history = {algo: {func: [] for func in self.benchmark_functions} for algo in self.algorithms}
 
-    def callback(self, algo_name, func_name, iteration, best_fitness, best_solution, avg_fitness, all_solutions):
+    def callback(self, algo_name, func_name, iteration, best_fitness):
+        
+
         if iteration % self.plot_interval == 0:
+            
             self.iteration_history[algo_name][func_name].append(iteration)
             self.fitness_history[algo_name][func_name].append(best_fitness)
-            self.avg_fitness_history[algo_name][func_name].append(avg_fitness)
-            self.best_solution_history[algo_name][func_name].append(best_solution.copy())
-            self.trajectory_first_dimension[algo_name][func_name].append(best_solution[0])
-            self.all_solutions_history[algo_name][func_name].append(all_solutions.copy())
-
 
 
     def save_all_iterations(self):
         # Prepare data to be saved
         all_data = {
             "iterations": self.iteration_history,
-            "fitness": self.fitness_history,
-            "avg_fitness": self.avg_fitness_history,
-            "best_solution": self.best_solution_history,
-            "trajectory_first_dimension": self.trajectory_first_dimension
+            "fitness": self.fitness_history
         }
-        
-        # Convert any numpy arrays to lists for JSON serialization
-        def convert_numpy_to_list(obj):
-            if isinstance(obj, np.ndarray):
-                return obj.tolist()
-            elif isinstance(obj, dict):
-                return {k: convert_numpy_to_list(v) for k, v in obj.items()}
-            elif isinstance(obj, list):
-                return [convert_numpy_to_list(v) for v in obj]
-            else:
-                return obj
-
-        all_data = convert_numpy_to_list(all_data)
         
         # Define the JSON file path
         json_file_path = os.path.join(self.json_dir, "all_iterations_fitness.json")
@@ -101,6 +75,7 @@ class OptimizationEngine:
         # Write data to JSON file
         with open(json_file_path, 'w') as json_file:
             json.dump(all_data, json_file, indent=4)
+
 
     def plot_convergence(self, algo_name, func_name):
         plt.figure(figsize=(10, 6))
@@ -117,88 +92,8 @@ class OptimizationEngine:
             plt.ylim(min_fitness - 0.1 * abs(min_fitness), max_fitness + 0.1 * abs(max_fitness))
 
         plt.grid(True)
-        plot_dir = os.path.join(self.plots_dir, algo_name, func_name)
-        os.makedirs(plot_dir, exist_ok=True)
-        plt.savefig(os.path.join(plot_dir, "convergence.png"))
+        plt.savefig(os.path.join(self.plots_dir, f"{algo_name}_{func_name}.png"))
         plt.close()
-
-    def plot_average_fitness_history(self, algo_name, func_name):
-        plt.figure(figsize=(10, 6))
-        plt.plot(self.iteration_history[algo_name][func_name], self.avg_fitness_history[algo_name][func_name], 'g-', marker='o')
-        plt.title(f"Average Fitness History - {algo_name} - {func_name}")
-        plt.xlabel("Iteration")
-        plt.ylabel("Average Fitness")
-        plt.grid(True)
-        plot_dir = os.path.join(self.plots_dir, algo_name, func_name)
-        os.makedirs(plot_dir, exist_ok=True)
-        plt.savefig(os.path.join(plot_dir, "average_fitness_history.png"))
-        plt.close()
-
-    def plot_trajectory_first_dimension(self, algo_name, func_name):
-        plt.figure(figsize=(10, 6))
-        plt.plot(self.iteration_history[algo_name][func_name], self.trajectory_first_dimension[algo_name][func_name], 'r-', marker='o')
-        plt.title(f"Trajectory in First Dimension - {algo_name} - {func_name}")
-        plt.xlabel("Iteration")
-        plt.ylabel("First Dimension of Best Solution")
-        plt.grid(True)
-        plot_dir = os.path.join(self.plots_dir, algo_name, func_name)
-        os.makedirs(plot_dir, exist_ok=True)
-        plt.savefig(os.path.join(plot_dir, "trajectory_first_dimension.png"))
-        plt.close()
-
-    def plot_search_history(self, algo_name, func_name, func_details):
-        all_solutions_list = self.all_solutions_history[algo_name][func_name]
-        all_solutions = np.vstack(all_solutions_list)
-
-        
-        if func_details['DIMENSION'] == 2:
-            x_range = [func_details["LOWER_BOUND"], func_details["UPPER_BOUND"]]
-            y_range = [func_details["LOWER_BOUND"], func_details["UPPER_BOUND"]]
-
-            x = np.linspace(x_range[0], x_range[1], 100)
-            y = np.linspace(y_range[0], y_range[1], 100)
-            X, Y = np.meshgrid(x, y)
-
-            Z = np.array([[func_details["function"]([x_i, y_j]) for x_i in x] for y_j in y])
-
-            plt.figure(figsize=(10, 8))
-            plt.contour(X, Y, Z, levels=50, cmap='viridis')
-            plt.scatter(all_solutions[:, 0], all_solutions[:, 1], c='red', s=10, alpha=0.5)
-            plt.colorbar(label='Function Value')
-            plt.title(f"Search History - {algo_name} - {func_name}")
-            plt.xlabel("X")
-            plt.ylabel("Y")
-        else:
-            pca = PCA(n_components=2)
-            reduced_solutions = pca.fit_transform(all_solutions)
-
-            x_min, x_max = reduced_solutions[:, 0].min() - 1, reduced_solutions[:, 0].max() + 1
-            y_min, y_max = reduced_solutions[:, 1].min() - 1, reduced_solutions[:, 1].max() + 1
-
-            x = np.linspace(x_min, x_max, 100)
-            y = np.linspace(y_min, y_max, 100)
-            X, Y = np.meshgrid(x, y)
-            Z = np.zeros_like(X)
-
-            for i in range(X.shape[0]):
-                for j in range(X.shape[1]):
-                    point = pca.inverse_transform([X[i, j], Y[i, j]])
-                    Z[i, j] = func_details["function"](point)
-
-            plt.figure(figsize=(10, 8))
-            plt.contour(X, Y, Z, levels=50, cmap='viridis')
-            plt.scatter(reduced_solutions[:, 0], reduced_solutions[:, 1], c='red', s=10, alpha=0.5)
-            plt.colorbar(label='Function Value')
-            plt.title(f"Search History (PCA Reduced) - {algo_name} - {func_name}")
-            plt.xlabel("Principal Component 1")
-            plt.ylabel("Principal Component 2")
-
-        plt.grid(True)
-        plot_dir = os.path.join(self.plots_dir, algo_name, func_name)
-        os.makedirs(plot_dir, exist_ok=True)
-        plt.savefig(os.path.join(plot_dir, "search_history.png"))
-        plt.close()
-
 
     def plot_comparative_results(self):
         max_iterations = 100  # Adjust this if needed
@@ -252,10 +147,7 @@ class OptimizationEngine:
             # Use tight layout to adjust spacing
             plt.tight_layout()
 
-            comparative_dir = os.path.join(self.plots_dir, 'comparative')
-            os.makedirs(comparative_dir, exist_ok=True)
-
-            plt.savefig(os.path.join(comparative_dir, f"comparative_{func_name}.png"))
+            plt.savefig(os.path.join(self.plots_dir, f"comparative_{func_name}.png"))
             plt.close()
 
     def plot_box_results(self):
@@ -273,7 +165,7 @@ class OptimizationEngine:
                 plt.close()
                 continue
 
-            plt.boxplot(data_to_plot, labels=list(self.algorithms.keys()))
+            plt.boxplot(data_to_plot, labels=self.algorithms)
             plt.title(f"Box Plot of Fitness Values - {func_name}")
             plt.xlabel("Algorithms")
             plt.ylabel("Fitness Values")
@@ -282,44 +174,34 @@ class OptimizationEngine:
             # Use tight layout to adjust spacing
             plt.tight_layout()
 
-            boxplot_dir = os.path.join(self.plots_dir, 'boxplots')
-            os.makedirs(boxplot_dir, exist_ok=True)
-
-            plt.savefig(os.path.join(boxplot_dir, f"boxplot_{func_name}.png"))
+            plt.savefig(os.path.join(self.plots_dir, f"boxplot_{func_name}.png"))
             plt.close()
 
-    def plot_3d_surface(self, func_details, algo_name, func_name):
+    def plot_3d_surface(self,func, x_range, y_range, title, filename, grid_size=100):
         """
         Plots a 3D surface for a given 2D function and saves the plot as an image.
         """
-        if func_details['DIMENSION'] != 2:
-            self.logger.warning(f"Cannot plot 3D surface for {func_name} as it is not a 2D function.")
-            return
-        
-        x_range = [func_details["LOWER_BOUND"], func_details["UPPER_BOUND"]]
-        y_range = [func_details["LOWER_BOUND"], func_details["UPPER_BOUND"]]
-
-        x = np.linspace(x_range[0], x_range[1], 100)
-        y = np.linspace(y_range[0], y_range[1], 100)
+        x = np.linspace(x_range[0], x_range[1], grid_size)
+        y = np.linspace(y_range[0], y_range[1], grid_size)
         X, Y = np.meshgrid(x, y)
 
-        Z = np.array([[func_details["function"]([x_i, y_j]) for x_i in x] for y_j in y])
+        # Evaluate the function on the grid
+        Z = np.array([[func([x_i, y_j]) for x_i in x] for y_j in y])
 
+        # Create the plot
         fig = plt.figure(figsize=(10, 7))
         ax = fig.add_subplot(111, projection='3d')
         surf = ax.plot_surface(X, Y, Z, cmap=cm.viridis, edgecolor='none', alpha=0.8)
-        ax.set_title(f"{func_name} Function")
+        ax.set_title(title)
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
         fig.colorbar(surf, shrink=0.5, aspect=5)
 
         # Save the plot
-        plot_dir = os.path.join(self.plots_dir, algo_name, func_name)
-        os.makedirs(plot_dir, exist_ok=True)
-        plt.savefig(os.path.join(plot_dir, f"{func_name.lower().replace('-', '_')}_surface.png"), dpi=300)
+        plt.savefig(filename, dpi=300)
         plt.close() 
-
+   
     def run_single_optimization(self, algo_name, func_name, func_details):
         self.logger.info(f"\n--- Starting optimization for {algo_name} on {func_name} ---")
         self.logger.info(f"Dimension: {func_details['DIMENSION']}")
@@ -337,7 +219,7 @@ class OptimizationEngine:
             func_details['DIMENSION'],
             func_details['LOWER_BOUND'],
             func_details['UPPER_BOUND'],
-            callback=lambda iteration, best_fitness, best_solution, avg_fitness, all_solutions: self.callback(algo_name, func_name, iteration, best_fitness, best_solution, avg_fitness, all_solutions),
+            callback=lambda iteration, best_fitness: self.callback(algo_name, func_name, iteration, best_fitness),
             global_optimum=func_details['GLOBAL_OPTIMUM'],
             **self.hyperparameters[algo_name]
         )
@@ -363,12 +245,6 @@ class OptimizationEngine:
         self.logger.info(f"Closeness from global optimum: {closeness_to_optimum:.6e}")
         self.logger.info(f"Best solution: {best_solution}")
         self.logger.info("-" * 40)
-
-        plot_dir = os.path.join(self.plots_dir, algo_name, func_name)
-        os.makedirs(plot_dir, exist_ok=True)
-
-        # Plot the 3D surface if applicable
-        self.plot_3d_surface(func_details, algo_name, func_name)
 
         return {
             'Algorithm': algo_name,
@@ -399,18 +275,19 @@ class OptimizationEngine:
         results = []
         for algo_name in self.algorithms:
             for func_name, func_details in self.benchmark_functions.items():
-                # Create the plot directory for this algorithm and function
-                plot_dir = os.path.join(self.plots_dir, algo_name, func_name)
-                os.makedirs(plot_dir, exist_ok=True)
-
                 result = self.run_single_optimization(algo_name, func_name, func_details)
                 results.append(result)
-
+                x_range = [func_details["LOWER_BOUND"], func_details["UPPER_BOUND"]]
+                y_range = [func_details["LOWER_BOUND"], func_details["UPPER_BOUND"]]
+                title = f"{func_name} Function"
+                filename = f'plots/{func_name.lower().replace("-", "_")}.png'  # Construct filename
+                self.logger.info(f"Plotting {func_name} function...")
+            
+            self.plot_3d_surface(func_details["function"], x_range, y_range, title, filename)
         self.save_results_to_csv(results)
         self.save_all_iterations()
-        self.plot_box_results()
+        # self.plot_all_convergences()
         self.plot_comparative_results()
-        self.plot_all_histories()
         self.logger.info("\n=== Optimization Engine Finished ===")
 
     def save_results_to_csv(self, results: List[Dict[str, Any]]):
@@ -445,10 +322,7 @@ class OptimizationEngine:
                 }
                 writer.writerow(row)
 
-    def plot_all_histories(self):
+    def plot_all_convergences(self):
         for algo_name in self.algorithms:
-            for func_name, func_details in self.benchmark_functions.items():
+            for func_name in self.benchmark_functions:
                 self.plot_convergence(algo_name, func_name)
-                self.plot_average_fitness_history(algo_name, func_name)
-                self.plot_trajectory_first_dimension(algo_name, func_name)
-                self.plot_search_history(algo_name, func_name, func_details)

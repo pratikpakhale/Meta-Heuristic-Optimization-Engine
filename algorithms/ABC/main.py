@@ -75,9 +75,15 @@ def artificial_bee_colony(func, dim, lower_bound, upper_bound, callback=None, **
         # Store all fitness values for this iteration
         all_fitness_values.append(fitness.copy())
 
-        # Callback
+        # Compute average fitness for this iteration
+        avg_fitness = np.mean(fitness)
+
+        # Get current solutions
+        all_solutions = food_sources.copy()
+
+        # Callback with updated parameters
         if callback:
-            callback(iteration, best_fitness)
+            callback(iteration, best_fitness, best_solution, avg_fitness, all_solutions)
 
     # Calculate additional statistics
     all_fitness_array = np.array(all_fitness_values)
@@ -94,5 +100,4 @@ def artificial_bee_colony(func, dim, lower_bound, upper_bound, callback=None, **
         "worst_fitness": worst_fitness,
         "median_fitness": median_fitness,
         'all_fitness_values': all_fitness_values  # List of arrays for each iteration
-        
     }

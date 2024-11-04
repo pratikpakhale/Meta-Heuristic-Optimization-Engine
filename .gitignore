@@ -165,3 +165,6 @@ logs/*
 plots/*
 csv_results/*
 json_results/*
+metrics.zip
+
+tmp/*

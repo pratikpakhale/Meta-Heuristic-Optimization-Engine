@@ -1,8 +1,5 @@
-# snlo.py
-
 import numpy as np
 import random
-import uuid  # To generate unique identifiers
 
 def socio_nomadic_learning_optimizer(
     objective_function,
@@ -112,9 +109,11 @@ def socio_nomadic_learning_optimizer(
     all_std_fitness = []
     all_worst_fitness = []
     all_fitness_values = []
-    iteration_fitness_values = []
+    
     # Iterative optimization process
     for iteration in range(1, max_iterations + 1):
+        iteration_fitness_values = []
+        iteration_solutions = []
         # For each clan
         for c_index, clan in enumerate(clans):
             leader = clan['leader']
@@ -311,13 +310,7 @@ def socio_nomadic_learning_optimizer(
             if leader['fitness'] < best_fitness:
                 best_fitness = leader['fitness']
                 best_solution = leader['position'].copy()
-        for clan in clans:
-            iteration_fitness_values.append(clan['leader']['fitness'])
-            for family in clan['families']:
-                for parent in family['parents']:
-                    iteration_fitness_values.append(parent['fitness'])
-                for child in family['children']:
-                    iteration_fitness_values.append(child['fitness'])
+
         # Periodical Meetings (Inter-Clan Learning)
         if iteration % 5 == 0:
             # Identify the best leader among clans
@@ -352,31 +345,43 @@ def socio_nomadic_learning_optimizer(
                         if f_r_new < best_fitness:
                             best_fitness = f_r_new
                             best_solution = r_new.copy()
-                        if callback:
-                            callback(iteration, best_fitness)
-                        
+                            
+        # Collect fitness values and solutions for this iteration
+        for clan in clans:
+            iteration_fitness_values.append(clan['leader']['fitness'])
+            iteration_solutions.append(clan['leader']['position'].copy())
+            for family in clan['families']:
+                for parent in family['parents']:
+                    iteration_fitness_values.append(parent['fitness'])
+                    iteration_solutions.append(parent['position'].copy())
+                for child in family['children']:
+                    iteration_fitness_values.append(child['fitness'])
+                    iteration_solutions.append(child['position'].copy())
+
         # Calculate statistics for this iteration
-        best_fitness = min(iteration_fitness_values)
+        best_fitness_iteration = min(iteration_fitness_values)
         mean_fitness = np.mean(iteration_fitness_values)
         median_fitness = np.median(iteration_fitness_values)
         std_fitness = np.std(iteration_fitness_values)
         worst_fitness = max(iteration_fitness_values)
 
         # Store the statistics
-        all_best_fitness.append(best_fitness)
+        all_best_fitness.append(best_fitness_iteration)
         all_mean_fitness.append(mean_fitness)
         all_median_fitness.append(median_fitness)
         all_std_fitness.append(std_fitness)
         all_worst_fitness.append(worst_fitness)
-        all_fitness_values.append(iteration_fitness_values)
+        all_fitness_values.append(iteration_fitness_values.copy())
+
         # Adjust learning parameters
         alpha *= decay_factor
         beta = min(beta + increment, 1 - alpha)
         alpha = max(alpha, 0.0)
         beta = min(beta, 1.0 - alpha)
-        
-        
 
+        # Callback function after each iteration
+        if callback:
+            callback(iteration, best_fitness, best_solution, mean_fitness, iteration_solutions)
 
     # Calculate overall statistics
     all_fitness_values_flat = [item for sublist in all_fitness_values for item in sublist]
@@ -393,6 +398,6 @@ def socio_nomadic_learning_optimizer(
         'std_dev_fitness': overall_std_fitness,
         'worst_fitness': overall_worst_fitness,
         'all_fitness_values': all_fitness_values
-        
     }
     return result
+
