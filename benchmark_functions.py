@@ -121,61 +121,69 @@ def multiple_disk_clutch_brake(x):
     """
     Multiple disk clutch brake optimization problem
     """
-    # Problem constants
-    rho = 7.85e-6  # Density of the material (kg/mm³)
-    Mh = 1000      # Maximum torque (Nm)
-    prz = 1        # Maximum pressure (MPa)
-    Vsr = 10       # Maximum sliding velocity (m/s)
-    mu = 0.5       # Coefficient of friction
-    s = 1.5        # Safety factor
-    N = 250        # RPM
+    # Problem constants from the table
+    rho = 7.85e-6    # Density of the material (kg/mm³)
+    mu = 0.5         # Coefficient of friction
+    s = 1.5          # Safety factor
+    N = 250          # RPM (revolutions per minute)
+    Mh = 3           # Maximum torque (Nm)
+    prz_max = 1      # Maximum pressure (MPa)
+    Vsr_max = 10     # Maximum sliding velocity (m/s)
+    Tmax = 3         # Maximum thickness (mm)
+    Tmin = 1.5       # Minimum thickness (mm)
+    Lmax = 30        # Maximum length (mm)
+    Δr = 20          # Minimum radius difference between ro and ri (mm)
     pi = np.pi
 
     # Extract design variables
     ri, ro, t, F, n = x
-    n = round(n)  # Round n to nearest integer
-    
+    n = round(n)  # Ensure n is an integer as it's the number of disks
+
     # Objective function (minimize clutch brake mass)
-    fx = pi * (ro**2 - ri**2) * t * n * rho
+    # Calculate objective function
+    fx = pi * (ro**2 - ri**2) * t * (n + 1) * rho
     
-    # Constraints
-    g1 = (ro - ri) - 20  # Geometric constraint
-    g2 = prz - (F / (pi * (ro**2 - ri**2)))  # Pressure constraint
-    g3 = Vsr - (2 * pi * ro * N / 60)  # Velocity constraint
-    g4 = 2.5 * (ro + ri) - (ro - ri)  # Geometric ratio constraint
-    g5 = F - s * Mh / (mu * n * (ro + ri) / 2)  # Torque constraint
-    g6 = t - 3  # Thickness constraint
-    g7 = 0.25 - t  # Minimum thickness constraint
+    # Calculate constraints
+    constraints = [
+        (ro - ri) - Δr,                            # g1
+        Lmax - (n + 1) * (t + 0.5),               # g2
+        prz_max - (F / (pi * (ro**2 - ri**2))),   # g3
+        Vsr_max - (2 * pi * N * (ro**3 - ri**3) / (90 * (ro**2 - ri**2))), # g4
+        Tmax - t,                                  # g5
+        t - Tmin,                                  # g6
+        F - s * Mh / (mu * n * (ro + ri) / 2)     # g7
+    ]
     
-    # Penalty function
-    penalty = 0
-    constraints = [g1, g2, g3, g4, g5, g6, g7]
-    penalty_factor = 1e6
-    
+    # Improved constraint handling with adaptive penalties
+    total_violation = 0
     for g in constraints:
-        if g > 0:  # Constraint violation
-            penalty += penalty_factor * g**2
+        if g < 0:
+            total_violation += abs(g)
     
-    return fx + penalty
+    if total_violation > 0:
+        # Use a more gradual penalty function
+        penalty = 1 + np.log1p(total_violation)
+        return fx * penalty
+    return fx
 
 
 benchmark_functions = {
+    # "Schwefel": {
+    #     "function": schwefel_2d,
+    #     "DIMENSION": 2,
+    #     "LOWER_BOUND": -500,
+    #     "UPPER_BOUND": 500,
+    #     "GLOBAL_OPTIMUM": -837.658,
+    #     "is_constrained": False,
+    #     "can_plot_3d": False
+    # },
     "Multiple Disk Clutch Brake": {
         "function": multiple_disk_clutch_brake,
         "DIMENSION": 5,
-        "LOWER_BOUND": [60, 75, 0.25, 1000, 2],
-        "UPPER_BOUND": [80, 95, 3, 3000, 9],
+        "LOWER_BOUND": [55, 75, 1.5, 1000, 2],
+        "UPPER_BOUND": [110, 110, 3, 3000, 9],
         "GLOBAL_OPTIMUM": 0,
-        "is_constrained": True,  # Add this flag
-        "can_plot_3d": False   # Add this flag
-
-    },
-
-    "Schwefel": {
-        "function": schwefel_2d,
-        "DIMENSION": 2,
-        "LOWER_BOUND": [-500, -500],
-        "UPPER_BOUND": [ 500,  500],
-        "GLOBAL_OPTIMUM": -837.658
+        "is_constrained": True,
+        "can_plot_3d": False
     }
 }
