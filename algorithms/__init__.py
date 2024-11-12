@@ -4,3 +4,8 @@ from algorithms.NPO import nomadic_people_optimizer
 from algorithms.SNLO import socio_nomadic_learning_optimizer
 from algorithms.ABC import artificial_bee_colony
 from algorithms.HGS import hunger_games_search
+from algorithms.GWO import grey_wolf_optimizer
+from algorithms.SCA import sine_cosine_algorithm
+from algorithms.SSA import salp_swarm_algorithm
+from algorithms.DE import differential_evolution
+from algorithms.FA import firefly_algorithm

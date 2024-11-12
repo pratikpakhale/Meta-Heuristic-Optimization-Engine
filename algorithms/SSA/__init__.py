@@ -1,0 +1,1 @@
+from algorithms.SSA.main import salp_swarm_algorithm

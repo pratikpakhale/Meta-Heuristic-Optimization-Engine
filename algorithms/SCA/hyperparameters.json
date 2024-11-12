@@ -1,0 +1,6 @@
+{
+  "num_agents": 30,
+  "max_iter": 1000,
+  "A": 2,
+  "random_seed": 42
+}

@@ -1,5 +1,5 @@
 {
-    "num_bees": 50,
-    "limit": 20,
-    "max_iter": 100
+  "num_bees": 30,
+  "limit": 20,
+  "max_iter": 100
 }
