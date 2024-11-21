@@ -167,5 +167,6 @@ csv_results/*
 organized_csv_results/*
 json_results/*
 metrics.zip
+analysis_results_*/*
 
 tmp/*
